@@ -81,7 +81,6 @@ contains
     if (ierr==0) allocate (bf%d_pes(npes), stat=ierr)    
     if (ierr==0) allocate (bf%s_pes(npes), stat=ierr)    
     if (ierr==0) allocate (bf%a_pes(npes), stat=ierr)  
-    if (ierr==0) allocate (bf%carray(5), stat=ierr)  
     if (ierr/=0) then
       write(0,"(a,i0)") "Error in basis function allocation. ierr had value ", ierr
       errorflag=1
@@ -94,7 +93,8 @@ contains
     bf%a_pes(1:npes) = (0.0d0,0.0d0)
     bf%s_pes(1:npes) =  0.0d0
     bf%D_big         = (0.0d0,0.0d0)
-    bf%carray(1:5)  =  0.0d0
+    bf%orgpes = 1
+
 
     return
 
@@ -123,7 +123,6 @@ contains
     if (ierr==0) deallocate (bf%d_pes, stat=ierr)
     if (ierr==0) deallocate (bf%s_pes, stat=ierr)
     if (ierr==0) deallocate (bf%a_pes, stat=ierr)
-    if (ierr==0) deallocate (bf%carray, stat=ierr)
     if (ierr/=0) then
       write(0,"(a,i0)") "Error in basis function deallocation. ierr had value ", ierr
       errorflag=1
@@ -390,14 +389,14 @@ subroutine allocbs_alt(bsetarr,clone_num,nbf)
 
   end subroutine allocbs_alt
 
-  subroutine deallocbs_alt(bsetarr,clone_num,timesteps,nbf)
+  subroutine deallocbs_alt(bsetarr,clone_num,nbf)
   
     ! Allocates the top level of the variable of the basisfn defined type
 
     implicit none
     
     type(basisset),dimension(:), ALLOCATABLE, intent(inout)::bsetarr
-    integer, intent (in) :: clone_num,timesteps,nbf
+    integer, intent (in) :: clone_num,nbf
     
     integer:: j,k,l, ierr
 

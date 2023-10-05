@@ -36,10 +36,10 @@ systems={
 
 parameters={
     # Number of dimensions
-    'ndim':10,
+    'ndim':50,
 
     # Number of basis functions 
-    'in_nbf':10,
+    'in_nbf':2,
 
     # Random Number generation function (ZBQL - using ZBQLNOR subroutine, GAUS - using function based on numerical recipes)
     'randfunc':'ZBQL',
@@ -68,22 +68,28 @@ Train={
 
 clone={
     # Flag for cloning basis functions (yes/no/blind/blind+/QSC/v1)
-    'Cloning':'no',
+    'Cloning':'V1',
 
     # Cloning threshold (value of |sum_r(a_{r,k})|) - must be >= 0.05 and < 0.25, default 0.249
-    'Threshold':'0.249d0',
+    'Threshold':'0.23d0',
 
     # Maximum number of Cloning events allowed
-    'max_cloning':19,
+    'max_cloning':4,
 
     # Minimum cloning frequency (ie how many timesteps since last cloning is new cloning event allowed)
-    'clon_freq':1000,
+    'clon_freq':1,
 
     #Quantum Superposition Cloning exclusion paramter between the two child trajectories should >= ??? and < ???
-    'QSC_epsilon':'0.1d0'
+    'QSC_epsilon':'0.1d0',
+
+    # Automatic cloning (NBF/POP/NO)
+    'Auto_clone':'POP',
 
     # Cloning block (the space between cloning events for MCEv1)
-    # 'Clon_block':1000
+    'Clon_block':1365,
+
+    # Threshold for cloning, serves as percentage of basis functions of percentage of population exchange
+    'Bfsthresh': 0.04
 
 }
 
@@ -108,9 +114,9 @@ prop={
     #Maximum stepsize - used in adaptive stepsize
     'dtmax':'500.d0',
     #Starting stepsize of adaptive / Constant stepsize for Static stepsize
-    'dtinit':'5.0d-3',
+    'dtinit':'10.0d-3',
     #End Time of propagation
-    'time_end':'1.0d+1', #1.00d+1
+    'time_end':'1.0+1', #1.00d+1
     #Start time of propagation
     'time_start':'0.0d+00',
     #Propagation size - either "static" or "adaptive"

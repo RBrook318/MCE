@@ -621,18 +621,12 @@ contains
     complex(kind=8) :: clonenorm, clonenorm2, asum1, asum2, bsnorm
     real(kind=8) :: normc1, normc2, normc0, choice, pophold1, pophold2
 
-    
-   
-
-  
-
- 
-    write(6,*) "Starting new V1 cloning subroutine"
+    ! write(6,*) "Starting new V1 cloning subroutine"
     bsovrlp = ovrlpmat(bs)
     bsnorm = norm(bs,bsovrlp)
     pophold1 = pop(bs,1,bsovrlp)
     pophold2 = pop(bs,2,bsovrlp)
-    write(6,*) "basenorm1 = ", bsnorm, pophold1,pophold2
+    !write(6,*) "basenorm1 = ", bsnorm, pophold1,pophold2
     !manipulating the child amplitudes 
     do k=1, nbf
       do m=1, ndim
@@ -668,15 +662,15 @@ contains
     clonenorm2 = norm(clone2,clone2ovrlp)
     normc1 = sqrt(clonenorm*dconjg(clonenorm))
     normc2 = sqrt(clonenorm2*dconjg(clonenorm2))
-    write(6,*) "basenorm2 = ", bsnorm, pophold1,pophold2
-    write(6,*) "clonenorm = ", clonenorm
-    write(6,*) "clonenorm2 = ", clonenorm2
+    ! write(6,*) "basenorm2 = ", bsnorm, pophold1,pophold2
+    ! write(6,*) "clonenorm = ", clonenorm
+    ! write(6,*) "clonenorm2 = ", clonenorm2
 
 
 
     do k=1, nbf
-      clone1(k)%normweight = clone1(k)%normweight * normc1
-      clone2(k)%normweight = clone2(k)%normweight * normc2
+      clone1(k)%orgpes = 1 
+      clone2(k)%orgpes = 2
       do r=1, npes
         clone2(k)%d_pes(r) = clone2(k)%d_pes(r)!/sqrt(clonenorm2)!exp(-i*clone(k)%s_pes(r)) ! clone 2 will be non zero only when not on the pes
         clone1(k)%d_pes(r) = clone1(k)%d_pes(r)!/sqrt(clonenorm)!exp(-i*clone(k)%s_pes(r)) ! it's easier to set all the first child to the preclone value and change later 
@@ -698,18 +692,16 @@ contains
 
     do k=1, nbf
       do m=1, ndim
-        write(6,*) m
         bsnew(k)%z(m) = bsold(k)%z(m)
       end do
       bsnew(k)%D_big = (1.0d0,0.00) ! the prefactor doesn't change through cloning 
-      bsnew(k)%normweight = bsold(k)%normweight  
-      bsnew(k)%normweight = bsold(k)%normweight
+
       do r=1, npes
         bsnew(k)%d_pes(r) = bsold(k)%d_pes(r) 
         bsnew(k)%s_pes(r) = bsold(k)%s_pes(r) 
         bsnew(k)%a_pes(r) = bsold(k)%a_pes(r)
       end do 
-
+      bsnew(k)%orgpes = bsold(k)%orgpes
     end do 
 
 
@@ -750,6 +742,91 @@ contains
   
   end subroutine Renorm_clones
 
+  subroutine v1cloning_check(bsetarr, cloneblock, e, nbf, nclones,x)
+
+    implicit none 
+
+    type(basisset), dimension (:), intent(inout) :: bsetarr
+    integer,intent(inout) :: e, nbf, nclones,x
+    integer,dimension(:),intent(inout), allocatable :: cloneblock
+    complex(kind=8), dimension (:,:), allocatable :: ovrlp
+    real(kind=8) ::  pophold1,pophold2,poptot, popdiff, normar
+    integer, dimension(:), allocatable :: cloned
+    real(kind=8), dimension(:), allocatable :: brforce
+    integer :: p,j,k,l, clonehere, r
+
+
+ 
+
+    do p=1,nclones
+      allocate(ovrlp(size(bsetarr(p)%bs),size(bsetarr(p)%bs)))
+      ovrlp=ovrlpmat(bsetarr(p)%bs)
+      popdiff = 1
+      pophold1 = pop(bsetarr(p)%bs, 1, ovrlp)
+      pophold2 = pop(bsetarr(p)%bs, 2, ovrlp)
+      poptot = pophold1 + pophold2
+      deallocate(ovrlp) 
+      if (poptot.lt.5d-2) then
+        ! write(6,*) 'clone', p, 'was skipped due to low population', poptot
+        cycle
+      end if 
+      if(auto_clone=='POP') then
+        if ((bsetarr(p)%bs(1)%orgpes==1)) then 
+          popdiff = (pophold1-pophold2)/(pophold1+pophold2)
+        else if (bsetarr(p)%bs(1)%orgpes == 2) then
+          popdiff = (pophold2-pophold1)/(pophold1+pophold2)
+        end if 
+
+        if (popdiff.lt.1-(2*nbf_frac)) then 
+          if(nclones.lt.2**clonemax) then
+            nclones = nclones+1 
+            write(6,*) 'clone', nclones, 'created from', p,'at timestep', x, pophold1, pophold2
+            !$omp critical
+            call v1cloning(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
+            !$omp end critical 
+          end if 
+        end if
+      else if(auto_clone=='NBF') then
+        clonehere = 0
+        do j=1,nbf
+          normar = 0.0d0
+          do r=1,npes
+            normar = normar + dconjg(bsetarr(p)%bs(j)%a_pes(r))*bsetarr(p)%bs(j)%a_pes(r)
+          end do
+          !!!! The line below needs changing to acount for multiple PESs
+          brforce(j) = ((abs(bsetarr(p)%bs(j)%a_pes(1)*bsetarr(p)%bs(j)%a_pes(2))**2.0)/(normar**2.0))
+          if ((brforce(j).gt.thresh)) then
+            ! write(brunit,*) 'cloneblock hit for repeat', reps, 'clone', p, 'timestep', x, brforce
+            clonehere = clonehere + 1
+          end if 
+        end do 
+        if (clonehere.ge.nbf*nbf_frac) then
+            if(nclones.lt.2**clonemax) then 
+              nclones = nclones+1 
+              call v1cloning(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
+              clonehere = 0 
+          end if 
+        end if  
+      else if (auto_clone== 'NO') then
+        if (x==cloneblock(e)) then
+          ! write(6,*) 'cloneblock hit for repeat', reps 
+          l = nclones+1
+          do j=1,nclones
+            !write(6,*) 'here j =, ', j, 'and l =, ', l
+            !$omp critical
+            call v1cloning(bsetarr(j)%bs,nbf,bsetarr(j)%bs,bsetarr(l)%bs)
+            !$omp end critical 
+            l = l+1
+          end do 
+          nclones = nclones*2
+          e=e+1
+        end if
+      end if 
+    end do 
+    ! write(6,*) 'checked cloning conditions'
+
+
+  end subroutine v1cloning_check
 
 !***********************************************************************************!
 end module bsetalter

@@ -141,7 +141,6 @@ contains
     write(bsunit,"(a,1x,i4)"       ) 'nbasisfns'  , size(bs)
     write(bsunit,"(a,1x,i4)"       ) 'initial_PES', in_pes
     write(bsunit,"(a,1x,es25.17e3)") 'time'       , t
-    write(bsunit,"(a,1x,i4)"       ) 'carray ',  bs(1)%carray(1)
     
     write(bsunit,*) ""
     do m=1,ndim
@@ -948,7 +947,7 @@ contains
     !if (ierr.ne.0) then 
     !  errorflag=1
     !end if
-    write(321, *) reps, cnum_start, time, bs(1)%carray(1), norm1, norm2
+    write(321, *) reps, cnum_start, time, norm1, norm2
     
     close(321)
 

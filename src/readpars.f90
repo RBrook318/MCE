@@ -332,7 +332,7 @@ contains
   subroutine readbsparams   !   Level 1 Subroutine
 
     IMPLICIT NONE
-    character(LEN=100)::LINE1, LINE2, LINE3, LINE4,LINE5, LINE6, LINE7
+    character(LEN=100)::LINE1, LINE2, LINE3, LINE4,LINE5, LINE6, LINE7, LINE8
     integer::ierr, n
 
     if (errorflag .ne. 0) return
@@ -435,7 +435,7 @@ contains
       return
     end if  
     n=n+1
-    read(140,*,iostat=ierr)LINE1, LINE2, LINE3, LINE4,LINE5,LINE6
+    read(140,*,iostat=ierr)LINE1, LINE2, LINE3, LINE4, LINE5, LINE6, LINE7, LINE8
     if (ierr .ne. 0) then
       write(0,"(a)") 'Error reading cloning data'
       errorflag = 1
@@ -488,7 +488,28 @@ contains
       return
     end if
     n = n+1
-   
+    read(LINE6,*,iostat=ierr)auto_clone
+    if(ierr.ne.0) then
+      write(0,"(a)")  "Error reading QSC exclusion parameter"
+      errorflag = 1
+      return
+    end if
+    n = n+1
+    read(LINE7,*,iostat=ierr)clone_block
+    if(ierr.ne.0) then
+      write(0,"(a)")  "Error reading QSC exclusion parameter"
+      errorflag = 1
+      return
+    end if
+    n = n+1
+    read(LINE8,*,iostat=ierr)nbf_frac
+    if(ierr.ne.0) then
+      write(0,"(a)")  "Error reading QSC exclusion parameter"
+      errorflag = 1
+      return
+    end if
+    n = n+1
+
 
     if ((in_pes.gt.npes).or.(in_pes.le.0)) then
       write(0,"(a)") "Initial PES does not exist"
@@ -573,7 +594,7 @@ contains
       randfunc = 'GAUS'
     end if
 
-    if (n.ne.15) then
+    if (n.ne.18) then
       write(0,"(a,i0)") "Not all required variables read in readbsparams subroutine. n=", n
       errorflag = 1
       return
@@ -657,15 +678,15 @@ contains
         errorflag = 1
         return
       end if
-      if (clonefreq.lt.50) then
-        write(0,"(a)") "A Cloning frequency of less than 50 could result in too rapid cloning at the beginning of the simulation"
-        errorflag = 1
-        return
-      else if (clonefreq.gt.1000) then
-        write(0,"(a)") "A cloning frequency of greater than 1000 will result in very little effect of the cloning procedure"
-        errorflag = 1
-        return
-      end if
+      ! if (clonefreq.lt.50) then
+      !   write(0,"(a)") "A Cloning frequency of less than 50 could result in too rapid cloning at the beginning of the simulation"
+      !   errorflag = 1
+      !   return
+      ! else if (clonefreq.gt.1000) then
+      !   write(0,"(a)") "A cloning frequency of greater than 1000 will result in very little effect of the cloning procedure"
+      !   errorflag = 1
+      !   return
+      ! end if
     end if
 
 
@@ -904,15 +925,6 @@ contains
         write(6,"(a,es16.8e3)") "time =", t
         call flush(6)
         n = n+1
-        else if (LINE=="carray") then
-        backspace(bsunit)
-        read(bsunit,*,iostat=ierr)LINE,or
-        if(ierr.ne.0) then
-          write(0,"(a)")  "Error reading time"
-          call flush(0)
-          errorflag = 1
-          return
-        end if
         write(6,"(a,i4)") "original =", or
         call flush(6)
         n = n+1
@@ -974,7 +986,6 @@ contains
     end if
 
     do j=1,nbf
-      bs(j)%carray(1) = or
       read(bsunit,*,iostat=ierr)LINE,k
       if(k.ne.j) then
         write(0,"(a,i2,a,i2)") "Error. Expected basis function ", j, " but got ", k

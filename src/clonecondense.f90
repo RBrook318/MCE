@@ -120,8 +120,8 @@ contains
      write (11204,"(13(1x,es16.8e3))") normpfs(:,n)
     end do 
     close(11204)
-
-
+    
+  
     write(6,*) 'CONDENSING FINISHED'
     
   end subroutine
@@ -232,7 +232,9 @@ contains
     close(11204)
     call outccpop(reps,t, populations(1),populations(2),ctarray(1), ctarray(2), rescale, normpfs(10), normpfs(11))
 
-    
+    if (mod(t+1,50)==0) then     !Status reports
+      write(6,*) "Completed step ", t+1, " on rep ", reps
+    end if
     
   end subroutine
 
@@ -270,27 +272,27 @@ contains
         cpop11 = cpop11 + ovrlp12(j,k) * dconjg(bs1(j)%a_pes(1)) * bs2(k)%a_pes(1) 
       end do
     end do
-    do k=1,nbf
-      do j=1,nbf
-        cpop12 = cpop12 + ovrlp21(j,k) * dconjg(bs2(j)%a_pes(1)) * bs1(k)%a_pes(1)        
-      end do
-    end do
+    ! do k=1,nbf
+    !   do j=1,nbf
+    !     cpop12 = cpop12 + ovrlp21(j,k) * dconjg(bs2(j)%a_pes(1)) * bs1(k)%a_pes(1)        
+    !   end do
+    ! end do
     do k=1,nbf
       do j=1,nbf
         cpop21 = cpop21 + ovrlp12(j,k) * dconjg(bs1(j)%a_pes(2))*bs2(k)%a_pes(2)
       end do
     end do
 
-    do k=1,nbf
-      do j=1,nbf
-        cpop22 = cpop22 + ovrlp21(j,k) * dconjg(bs2(j)%a_pes(2)) * bs1(k)%a_pes(2) 
-      end do
-    end do
+    ! do k=1,nbf
+    !   do j=1,nbf
+    !     cpop22 = cpop22 + ovrlp21(j,k) * dconjg(bs2(j)%a_pes(2)) * bs1(k)%a_pes(2) 
+    !   end do
+    ! end do
 
    
 
-    crossterm1 = real(cpop11+cpop12) 
-    crossterm2 = real(cpop21+cpop22)
+    crossterm1 = real(cpop11+conjg(cpop11)) 
+    crossterm2 = real(cpop21+conjg(cpop21))
   
     ! write(6,*) 'pops'
     ! print*,cpop11 

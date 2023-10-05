@@ -418,7 +418,7 @@ contains
 
 
   subroutine postprop(bset,nbf,x,y,reps,muq,mup,time,popt, pops, timestrt_loc, timeend_loc, dt, &
-                                absehr,absnorm,absnorm2,acf_t,extra,clonememflg)
+                                absehr,absnorm,absnorm2,acf_t,extra)
     implicit none 
     
     type(basisfn), dimension(:), intent (inout) :: bset
@@ -429,7 +429,7 @@ contains
     complex(kind=8)::normtemp, norm2temp, ehren, acft, extmp
     real(kind=8) :: nrmtmp, nrm2tmp, ehrtmp, gridsp
     real(kind=8), intent(in) :: timestrt_loc, timeend_loc
-    integer, intent(in):: reps, nbf, x,y, clonememflg
+    integer, intent(in):: reps, nbf, x,y
     integer :: timestpunit, ierr, j, i, n, r, istat
     real(kind=8), dimension(:), intent(inout), allocatable :: absnorm, absnorm2, absehr
     integer, dimension(:), allocatable :: clone, clonenum, dtdone
@@ -467,9 +467,9 @@ contains
       if (method=="MCEv2") absnorm2(y) = absnorm2(y) + nrm2tmp
       acf_t(y) = acf_t(y) + acft
       extra(y) = extra(y) + extmp
-      if (clonememflg==0) then
-        call outnormpopadap(nrmtmp,acft,extmp,ehrtmp,popt,x,reps,time)
-      end if
+  
+      call outnormpopadap(nrmtmp,acft,extmp,ehrtmp,popt,x,reps,time)
+ 
     else if (step == "A") then
       timestpunit=1710+reps
       write(rep,"(i3.3)") reps
@@ -479,12 +479,11 @@ contains
       call outnormpopadap(nrmtmp,acft,extmp,ehrtmp,popt,x,reps,time)
     end if
     deallocate(ovrlp)
-    if (clonememflg==0) then
-      call outbs(bset, reps, mup, muq, time,x)
-      if ((cloneflg == "YES").or.(cloneflg == "BLIND+").or.(cloneflg == "QSC")) then
-        call outclones(clonenum, reps, clone)
-      end if
+    call outbs(bset, reps, mup, muq, time,x)
+    if ((cloneflg == "YES").or.(cloneflg == "BLIND+").or.(cloneflg == "QSC")) then
+     call outclones(clonenum, reps, clone)
     end if
+
   
 
     !call conservchk(initehr, initnorm, ehrtmp, nrmtmp, reps)  !Checks that all conserved quantites are conserved.
