@@ -254,31 +254,30 @@ Program MainMCE
     if (auto_clone=='NO') then 
       if (mod(tnum-2,clone_block).eq.0) then
         num_events = int((tnum-2)/clone_block- 1) 
-        write(6,*) 'num of events ', num_events
       else 
-        num_events = int((tnum-2)/clone_block) 
-        write(6,*) 'num of events ', num_events
+        num_events = int((tnum-2)/clone_block)       
       end if 
-      num_events = 2
-      allocate(cloneblock(num_events+1))
-      ! do n =1, size(cloneblock)-1
-      !     cloneblock(n) = n*clone_block
-      ! end do
-      cloneblock(1) = 19
-      cloneblock(2) = 210
+      num_events = min(num_events, clonemax)
+      write(6,*) 'num of events ', num_events
+      allocate(cloneblock(num_events))
+      do n =1, size(cloneblock)
+          cloneblock(n) = n*clone_block
+      end do
+      write(6,*) "cloneblock ", clone_block
+      ! cloneblock(1) = 1000
+      ! cloneblock(2) = 210
       ! cloneblock(3) = 63 
       ! cloneblock(4) = 84
       ! cloneblock(5) = 370
       ! cloneblock(6) = 450
       ! cloneblock(7) = 550
       ! cloneblock(8) = 810
-      cloneblock(num_events+1) = tnum-2
+      ! cloneblock(num_events+1) = tnum-2
       two_to_num_events=int(2**num_events)
       call allocbs_alt(bsetarr,two_to_num_events,in_nbf) !allocate(bsetarr(2**num_events,clonefreq))
     else
       write(6,*) clonemax
       call allocbs_alt(bsetarr,2**clonemax,in_nbf) !allocate(bsetarr(2**num_events,clonefreq))
-    
     end if 
   end if
  
@@ -648,7 +647,6 @@ Program MainMCE
                 absnorm,absnorm2,acf_t,extra)
             end if
           else if (cloneflg.ne."V1") then
-            write(6,*) x
             call propstep (bset, dt, dtnext, dtdone, time, genflg, timestrt_loc,x,reps)     ! This subroutine takes a single timestep
 
             if (dtdone.eq.dt) then   ! nsame and nchange are used to keep track of changes to the stepsize.
@@ -684,7 +682,7 @@ Program MainMCE
 
             call postprop(bset,nbf,x,y,reps,muq,mup,time,popt,pops,timestrt_loc,timeend_loc,dt,absehr, &
               absnorm,absnorm2,acf_t,extra)
-            write(6,*) 'one timestep done'
+            
           end if
 
         end do   !End of time propagation.

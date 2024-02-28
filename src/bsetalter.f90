@@ -782,7 +782,8 @@ contains
             nclones = nclones+1 
             write(6,*) 'clone', nclones, 'created from', p,'at timestep', x, pophold1, pophold2
             !$omp critical
-            call v1cloning(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
+            ! call v1cloning(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
+            call v1cloning_angular(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
             !$omp end critical 
           end if 
         end if
@@ -803,7 +804,8 @@ contains
         if (clonehere.ge.nbf*nbf_frac) then
             if(nclones.lt.2**clonemax) then 
               nclones = nclones+1 
-              call v1cloning(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
+              ! call v1cloning(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
+              call v1cloning_angular(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
               clonehere = 0 
           end if 
         end if  
@@ -814,7 +816,8 @@ contains
           do j=1,nclones
             !write(6,*) 'here j =, ', j, 'and l =, ', l
             !$omp critical
-            call v1cloning(bsetarr(j)%bs,nbf,bsetarr(j)%bs,bsetarr(l)%bs)
+            ! call v1cloning(bsetarr(j)%bs,nbf,bsetarr(j)%bs,bsetarr(l)%bs)
+            call v1cloning_angular(bsetarr(j)%bs,nbf,bsetarr(j)%bs,bsetarr(l)%bs)
             !$omp end critical 
             l = l+1
           end do 
@@ -827,6 +830,92 @@ contains
 
 
   end subroutine v1cloning_check
+
+  subroutine v1cloning_angular(bs, nbf, clone1, clone2)
+    implicit none
+
+    type(basisfn), dimension(:), allocatable, intent(inout) :: bs
+    type(basisfn), dimension(:), intent(inout) ::clone1, clone2 
+    integer, intent(in) :: nbf
+    integer :: nbfold, k, m, r, nbfnew, ierr, l, j, cloneload, i_seed, n
+    INTEGER, DIMENSION(:), ALLOCATABLE :: a_seed, loc0
+    INTEGER, DIMENSION(1:8) :: dt_seed
+    real(kind=8) :: brforce, normar, sumamps, trackav
+    complex(kind=8), dimension(size(bs),size(bs))::cloneovrlp, clone2ovrlp, bsovrlp
+    complex(kind=8) :: clonenorm, clonenorm2, asum1, asum2, bsnorm
+    real(kind=8) :: normc1, normc2, normc0, choice, pophold1, pophold2
+    complex(kind=8) :: cos_theta, sin_theta
+    ! Set the angle theta (you may want to adjust this value)
+    real(kind=8) :: theta
+
+    call random_number(theta)
+    theta = theta * 3.1415926535
+    write(6,*) "Angular cloning has begun" 
+    write(6,*) "theta for this event is, ", theta
+    cos_theta = cos(theta)
+    sin_theta = sin(theta)
+
+
+    ! write(6,*) "Starting new V1 cloning subroutine"
+    bsovrlp = ovrlpmat(bs)
+    bsnorm = norm(bs,bsovrlp)
+    pophold1 = pop(bs,1,bsovrlp)
+    pophold2 = pop(bs,2,bsovrlp)
+    write(6,*) "basenorm1 = ", bsnorm, pophold1,pophold2
+    !manipulating the child amplitudes 
+    do k=1, nbf
+      do m=1, ndim
+        clone1(k)%z(m) = bs(k)%z(m)
+        clone2(k)%z(m) = bs(k)%z(m)
+      end do
+  
+      clone2(k)%D_big = (1.0d0,0.00)
+      clone2(k)%d_pes(1) = bs(k)%d_pes(1) * sin_theta * sin_theta
+      clone2(k)%d_pes(2) = bs(k)%d_pes(2) * cos_theta *cos_theta
+      clone2(k)%s_pes(1) = bs(k)%s_pes(1)
+      clone2(k)%s_pes(2) = bs(k)%s_pes(2)
+      clone2(k)%a_pes(1) = clone2(k)%d_pes(1) * exp(i*clone2(k)%s_pes(1))
+      clone2(k)%a_pes(2) = clone2(k)%d_pes(2) * exp(i*clone2(k)%s_pes(2))
+
+      clone1(k)%D_big = (1.0d0,0.00) 
+      clone1(k)%d_pes(1) = bs(k)%d_pes(1) * cos_theta * cos_theta ! it's easier to set all the first child to the preclone value and change later 
+      clone1(k)%d_pes(2) = bs(k)%d_pes(2) * sin_theta * sin_theta
+      clone1(k)%s_pes(1) = bs(k)%s_pes(1)
+      clone1(k)%s_pes(2) = bs(k)%s_pes(2)
+      clone1(k)%a_pes(1) = clone1(k)%d_pes(1) * exp(i*clone1(k)%s_pes(1)) 
+      clone1(k)%a_pes(2) = clone1(k)%d_pes(2) * exp(i*clone1(k)%s_pes(2)) 
+    end do 
+    
+
+    bsovrlp = ovrlpmat(bs)
+    bsnorm = norm(bs,bsovrlp)
+    pophold1 = pop(bs,1,bsovrlp)
+    pophold2 = pop(bs,2,bsovrlp)
+    cloneovrlp = ovrlpmat(clone1)
+    clone2ovrlp = ovrlpmat(clone2)
+    clonenorm = norm(clone1,cloneovrlp)
+    clonenorm2 = norm(clone2,clone2ovrlp)
+    normc1 = sqrt(clonenorm*dconjg(clonenorm))
+    normc2 = sqrt(clonenorm2*dconjg(clonenorm2))
+    write(6,*) "basenorm2 = ", bsnorm, pophold1,pophold2
+    write(6,*) "clonenorm = ", clonenorm
+    write(6,*) "clonenorm2 = ", clonenorm2
+
+
+
+    do k=1, nbf
+      clone1(k)%orgpes = 1 
+      clone2(k)%orgpes = 2
+      do r=1, npes
+        clone2(k)%d_pes(r) = clone2(k)%d_pes(r)!/sqrt(clonenorm2)!exp(-i*clone(k)%s_pes(r)) ! clone 2 will be non zero only when not on the pes
+        clone1(k)%d_pes(r) = clone1(k)%d_pes(r)!/sqrt(clonenorm)!exp(-i*clone(k)%s_pes(r)) ! it's easier to set all the first child to the preclone value and change later 
+        clone1(k)%a_pes(r) = clone1(k)%d_pes(r) * exp(i*clone1(k)%s_pes(r))
+        clone2(k)%a_pes(r) = clone2(k)%d_pes(r) * exp(i*clone2(k)%s_pes(r))
+      end do 
+    end do  
+
+  end subroutine v1cloning_angular
+
 
 !***********************************************************************************!
 end module bsetalter

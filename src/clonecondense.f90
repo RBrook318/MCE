@@ -219,7 +219,7 @@ contains
     pops(t+1,2) = normpfs(11) + pops(t+1,2)
     normpfs(12) = normpfs(10) + normpfs(11)
     normpfs(13) = normpfs(10) - normpfs(11)
-  
+    
       
     normpfs(2) = 1
     
