@@ -91,8 +91,8 @@ contains
       normpfs(7,t) = dimag(extra(t+tsstart))
       normpfs(8,t) = abs(extra(t+tsstart))
       normpfs(9,t) = absehr(t+tsstart)
-      normpfs(10,t) = populations(t,1) + ctarray(t,1)
-      normpfs(11,t) = populations(t,2) + ctarray(t,2)
+      ! normpfs(10,t) = populations(t,1) + ctarray(t,1)
+      ! normpfs(11,t) = populations(t,2) + ctarray(t,2)
       rescale = normpfs(10,t) + normpfs(11,t)
       normpfs(10,t) = normpfs(10,t)/rescale
       normpfs(11,t) = normpfs(11,t)/rescale

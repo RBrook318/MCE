@@ -647,7 +647,7 @@ contains
         write (0,"(a)") "Cloning with MCEv2 can only work on a swarm or a swarm of trains"
         errorflag = 1
         return
-      else if ((method.eq."MCEv2").and.(basis.ne."SWARM")) then
+      else if ((method.eq."MCEv1").and.(basis.ne."SWARM")) then
         write (0,"(a)") "Cloning with MCEv1 can only work on a swarm"
         errorflag = 1
         return

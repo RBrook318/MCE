@@ -193,16 +193,17 @@ contains
     n = 90254+reps
     
     open(unit=n,file=trim(filename),status="unknown",iostat=ierr)
+    
     if (ierr/=0) then
       write (0,"(3a,i0)") "Error opening ", trim(filename), " file. Ierr was ", ierr
       errorflag = 1
       return
     end if
-
+  
     do j=1,size(clonenum)
       write(n,"(i5,1x,i2,1x,i5)") j, clonenum(j), clone(j)
     end do
-    
+   
     close(n)
     
   end subroutine outclones

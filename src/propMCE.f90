@@ -418,7 +418,7 @@ contains
 
 
   subroutine postprop(bset,nbf,x,y,reps,muq,mup,time,popt, pops, timestrt_loc, timeend_loc, dt, &
-                                absehr,absnorm,absnorm2,acf_t,extra)
+                                absehr,absnorm,absnorm2,acf_t,extra,clone,clonenum)
     implicit none 
     
     type(basisfn), dimension(:), intent (inout) :: bset
@@ -432,7 +432,8 @@ contains
     integer, intent(in):: reps, nbf, x,y
     integer :: timestpunit, ierr, j, i, n, r, istat
     real(kind=8), dimension(:), intent(inout), allocatable :: absnorm, absnorm2, absehr
-    integer, dimension(:), allocatable :: clone, clonenum, dtdone
+    integer, dimension(:), intent(inout) :: clone, clonenum
+    integer, dimension(:), allocatable :: dtdone
     character(LEN=3):: rep
     complex(kind=8), dimension (:), intent(inout) :: acf_t, extra
 
@@ -457,7 +458,7 @@ contains
       popt(r) = pop(bset, r, ovrlp)
     end do
     
-    
+ 
     if ((step == "S").and.(time.le.timeend)) then
       do r=1,npes
         pops(y,r) = pops(y,r) + popt(r)
@@ -469,7 +470,6 @@ contains
       extra(y) = extra(y) + extmp
   
       call outnormpopadap(nrmtmp,acft,extmp,ehrtmp,popt,x,reps,time)
- 
     else if (step == "A") then
       timestpunit=1710+reps
       write(rep,"(i3.3)") reps
@@ -479,11 +479,13 @@ contains
       call outnormpopadap(nrmtmp,acft,extmp,ehrtmp,popt,x,reps,time)
     end if
     deallocate(ovrlp)
+
     call outbs(bset, reps, mup, muq, time,x)
+   
     if ((cloneflg == "YES").or.(cloneflg == "BLIND+").or.(cloneflg == "QSC")) then
      call outclones(clonenum, reps, clone)
     end if
-
+    
   
 
     !call conservchk(initehr, initnorm, ehrtmp, nrmtmp, reps)  !Checks that all conserved quantites are conserved.

@@ -679,6 +679,8 @@ contains
       end do 
     end do  
       
+    write(6,*) "finished original cloning"
+    
   end subroutine v1cloning
 
   subroutine bstransfer(bsnew,bsold,nbf)
@@ -742,21 +744,22 @@ contains
   
   end subroutine Renorm_clones
 
-  subroutine v1cloning_check(bsetarr, cloneblock, e, nbf, nclones,x)
+  subroutine v1cloning_check(bsetarr, cloneblock, e, nbf, nclones,x,clonetype,pops)
 
     implicit none 
 
     type(basisset), dimension (:), intent(inout) :: bsetarr
     integer,intent(inout) :: e, nbf, nclones,x
-    integer,dimension(:),intent(inout), allocatable :: cloneblock
+    real,dimension(:),intent(inout), allocatable :: cloneblock
+    integer,dimension(:),intent(inout), allocatable :: clonetype
+
+    real(kind=8), dimension (:,:), intent(inout) :: pops
     complex(kind=8), dimension (:,:), allocatable :: ovrlp
     real(kind=8) ::  pophold1,pophold2,poptot, popdiff, normar
     integer, dimension(:), allocatable :: cloned
     real(kind=8), dimension(:), allocatable :: brforce
     integer :: p,j,k,l, clonehere, r
 
-
- 
 
     do p=1,nclones
       allocate(ovrlp(size(bsetarr(p)%bs),size(bsetarr(p)%bs)))
@@ -782,8 +785,8 @@ contains
             nclones = nclones+1 
             write(6,*) 'clone', nclones, 'created from', p,'at timestep', x, pophold1, pophold2
             !$omp critical
-            ! call v1cloning(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
-            call v1cloning_angular(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
+            call v1cloning(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
+            ! call v1cloning_angular(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
             !$omp end critical 
           end if 
         end if
@@ -804,32 +807,90 @@ contains
         if (clonehere.ge.nbf*nbf_frac) then
             if(nclones.lt.2**clonemax) then 
               nclones = nclones+1 
-              ! call v1cloning(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
-              call v1cloning_angular(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
+              call v1cloning(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
+              ! call v1cloning_angular(bsetarr(p)%bs,nbf,bsetarr(p)%bs,bsetarr(nclones)%bs)
               clonehere = 0 
           end if 
         end if  
-      else if (auto_clone== 'NO') then
+      else if (auto_clone== 'NO' .or. auto_clone == 'RAN') then
         if (x==cloneblock(e)) then
+          write(6,*) cloneblock
           ! write(6,*) 'cloneblock hit for repeat', reps 
           l = nclones+1
           do j=1,nclones
             !write(6,*) 'here j =, ', j, 'and l =, ', l
             !$omp critical
-            ! call v1cloning(bsetarr(j)%bs,nbf,bsetarr(j)%bs,bsetarr(l)%bs)
-            call v1cloning_angular(bsetarr(j)%bs,nbf,bsetarr(j)%bs,bsetarr(l)%bs)
+            write(6,*) "Starting cloning at timestep", x
+            call v1cloning(bsetarr(j)%bs,nbf,bsetarr(j)%bs,bsetarr(l)%bs)
+            ! call v1cloning_angular(bsetarr(j)%bs,nbf,bsetarr(j)%bs,bsetarr(l)%bs)
             !$omp end critical 
             l = l+1
           end do 
+          write(6,*) "clonemax is ", clonemax
           nclones = nclones*2
           e=e+1
+          if (e.gt.clonemax) then
+            e = 1
+            write(6,*) 'reduced e to 1 so cloneblock is now, ', cloneblock(e)
+          end if 
         end if
       end if 
     end do 
     ! write(6,*) 'checked cloning conditions'
 
 
+
+
   end subroutine v1cloning_check
+
+  subroutine v1ctcloning_check(bsetarr, cloneblock, e, nbf, nclones,x,clonetype,pops)
+    implicit none 
+
+    type(basisset), dimension (:), intent(inout) :: bsetarr
+    integer,intent(inout) :: e, nbf, nclones,x
+    real,dimension(:),intent(inout), allocatable :: cloneblock
+    integer,dimension(:),intent(inout), allocatable :: clonetype
+
+    real(kind=8), dimension (:,:), intent(inout) :: pops
+    complex(kind=8), dimension (:,:), allocatable :: ovrlp
+    real(kind=8) ::  pophold1,pophold2,poptot, popdiff, normar
+    integer, dimension(:), allocatable :: cloned
+    real(kind=8), dimension(:), allocatable :: brforce
+    integer :: p,j,k,l, clonehere, r
+    
+    if (auto_clone == 'TOP' .and. x.gt.1)then 
+      
+      popdiff = pops(x-1,1) - pops(x-1,2)
+      ! write(6,*) popdiff, cloneblock(e)
+      if (popdiff.lt.cloneblock(e)) then 
+        if (e.le.clonemax) then
+          write(6,*) cloneblock
+          ! write(6,*) 'cloneblock hit for repeat', reps 
+          l = nclones+1
+          do j=1,nclones
+            !write(6,*) 'here j =, ', j, 'and l =, ', l
+            !$omp critical
+            if (clonetype(e)==0) then
+              write(6,*) "Starting cloning at timestep", x,popdiff
+              call v1cloning(bsetarr(j)%bs,nbf,bsetarr(j)%bs,bsetarr(l)%bs)
+            else if (clonetype(e)==1) then
+              write(6,*) "starting angular cloning at timestep", x,popdiff
+              call v1cloning_angular(bsetarr(j)%bs,nbf,bsetarr(j)%bs,bsetarr(l)%bs)
+            end if 
+            !$omp end critical 
+
+            l = l+1
+          end do 
+          write(6,*) "clonemax is ", clonemax
+          nclones = nclones*2
+          e=e+1
+          end if 
+        end if 
+    end if 
+    
+
+
+  end subroutine v1ctcloning_check
 
   subroutine v1cloning_angular(bs, nbf, clone1, clone2)
     implicit none
@@ -885,7 +946,7 @@ contains
       clone1(k)%a_pes(1) = clone1(k)%d_pes(1) * exp(i*clone1(k)%s_pes(1)) 
       clone1(k)%a_pes(2) = clone1(k)%d_pes(2) * exp(i*clone1(k)%s_pes(2)) 
     end do 
-    
+    write(6,*) "Done"
 
     bsovrlp = ovrlpmat(bs)
     bsnorm = norm(bs,bsovrlp)
